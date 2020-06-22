@@ -61,7 +61,8 @@ class StartPage(tk.Frame):
         self.mask_lst = []
         self.forhead_count = 0
         self.start_camera()
-    
+
+
     def add_display_info(self,frame2,w,h):
         lst = ["Cotton_Mask","N-95_Mask","No_Mask","Three_Layer_Mask"]
         img = cv2.resize(frame2,(224,224))/255.0

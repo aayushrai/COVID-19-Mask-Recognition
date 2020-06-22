@@ -7,9 +7,8 @@ from tkinter.ttk import *
 from tkinter import *
 import os
 from tensorflow.keras.models import load_model
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-from tensorflow.keras.preprocessing.image import img_to_array
 from collections import Counter 
+import pyttsx3
 
 loop = False
 loop2 = False
@@ -62,10 +61,21 @@ class StartPage(tk.Frame):
         self.counter = 0 
         self.mask_lst = []
         self.forhead_count = 0
+        self.engine = pyttsx3.init()
+        self.speak_lst = []
         self.start_camera()
 
     def __del__(self):
         self.stop_camera()
+    
+    def text_to_speech(self,text):
+        if text not in self.speak_lst:
+            rate = self.engine.getProperty('rate')                  
+            self.engine.setProperty('rate', 200)     
+            self.engine.say(text)
+            self.engine.runAndWait()
+            self.engine.stop()
+            self.speak_lst.append(text)
         
     def detect_face(self,frame):
         (h, w) = frame.shape[:2]
@@ -97,9 +107,11 @@ class StartPage(tk.Frame):
                 pred = self.maskNet.predict(img.reshape(1,224,224,3))
                 label = lst[np.argmax(pred)]
                 self.mask_lst.append(label)
+                self.text_to_speech("Correct Please Wait")
                 self.frame = cv2.putText(self.frame,"Correct",(self.center_coordinates[0]-50,self.center_coordinates[1]),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),1,cv2.LINE_AA)
             else:
                 cc = self.Red
+                self.text_to_speech("please come closer")
                 self.frame = cv2.putText(self.frame,"To Far From Screen",(self.center_coordinates[0]-158,self.center_coordinates[1]),cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),1,cv2.LINE_AA)
         else:
             cc = self.Black
@@ -118,8 +130,8 @@ class StartPage(tk.Frame):
         right_eye = False
         for (ex,ey,ew,eh) in eyes:
             centerX,centerY = ex+(ew//2),ey+(eh//2)
-            cv2.rectangle(self.frame,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
-            cv2.circle(self.frame, (centerX,centerY ), 2,(0,0,255), 1)
+            # cv2.rectangle(self.frame,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
+            # cv2.circle(self.frame, (centerX,centerY ), 2,(0,0,255), 1)
             if eye11[0]<centerX<eye12[0] and eye11[1]<centerY<eye12[1]:
                 left_eye = True
             elif eye21[0]<centerX<eye22[0] and eye21[1]<centerY<eye22[1]:
@@ -143,6 +155,7 @@ class StartPage(tk.Frame):
                     else:
                         self.mask_lst = []
                         self.forhead_count = 0
+                        self.speak_lst = []
                 if len(self.mask_lst) >8:
                     ll = Counter(self.mask_lst).most_common(1)[0][0]
                     self.frame = cv2.putText(self.frame,str(ll),(20,int(self.vid.height)-20) ,cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),1,cv2.LINE_AA)
