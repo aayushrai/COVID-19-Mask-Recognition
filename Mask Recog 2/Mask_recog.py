@@ -53,8 +53,8 @@ class StartPage(tk.Frame):
         self.thickness = 2
         self.org = ((self.vid.width//2)-100, self.vid.height-25) 
         self.fontScale = 1
-        self.maskNet = load_model("Weights\mask_type.h5")
-        self.eye_cascade = cv2.CascadeClassifier('Weights\haarcascade_eye.xml')
+        self.maskNet = load_model("Weights//mask_type.h5")
+        self.eye_cascade = cv2.CascadeClassifier('Weights//haarcascade_eye.xml')
         prototxtPath = os.path.sep.join(["Weights", "deploy.prototxt"])
         weightsPath = os.path.sep.join(["Weights","res10_300x300_ssd_iter_140000.caffemodel"])
         self.faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
@@ -71,7 +71,7 @@ class StartPage(tk.Frame):
     def text_to_speech(self,text):
         if text not in self.speak_lst:
             rate = self.engine.getProperty('rate')                  
-            self.engine.setProperty('rate', 200)     
+            self.engine.setProperty('rate', 150)     
             self.engine.say(text)
             self.engine.runAndWait()
             self.engine.stop()
@@ -147,10 +147,11 @@ class StartPage(tk.Frame):
                 self.ret, self.frame = self.vid.get_frame()
                 frame2 = self.frame[y:y+h,x:x+w,:].copy()
                 Numfaces,locs = self.detect_face(frame2)
-                if len(self.mask_lst) <= 40:
+                if len(self.mask_lst) <= 60:
                     self.add_display_info(Numfaces,locs,frame2,w,h)
                 else:
-                    if self.forhead_count <= 50:
+                    self.text_to_speech("place your forehead near screen")
+                    if self.forhead_count <= 80:
                        self.detect_eyes(self.frame)
                     else:
                         self.mask_lst = []
@@ -158,6 +159,7 @@ class StartPage(tk.Frame):
                         self.speak_lst = []
                 if len(self.mask_lst) >8:
                     ll = Counter(self.mask_lst).most_common(1)[0][0]
+                    self.text_to_speech(str(ll))
                     self.frame = cv2.putText(self.frame,str(ll),(20,int(self.vid.height)-20) ,cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),1,cv2.LINE_AA)
                     self.frame = cv2.putText(self.frame,"Temperature:",(int(self.vid.width)-250,int(self.vid.height)-20) ,cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),1,cv2.LINE_AA)
                 if self.ret:
