@@ -61,10 +61,13 @@ class StartPage(tk.Frame):
         self.faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
         self.counter = 0 
         self.mask_lst = []
-        self.forhead_lst = []
+        self.forhead_count = 0
         self.start_camera()
+
+    def __del__(self):
+        self.stop_camera()
         
-    def detect_and_predict_mask(self,frame):
+    def detect_face(self,frame):
         (h, w) = frame.shape[:2]
         blob = cv2.dnn.blobFromImage(frame, 1.0, (300, 300),(104.0, 177.0, 123.0))
         self.faceNet.setInput(blob)
@@ -94,7 +97,6 @@ class StartPage(tk.Frame):
                 pred = self.maskNet.predict(img.reshape(1,224,224,3))
                 label = lst[np.argmax(pred)]
                 self.mask_lst.append(label)
-                coor = (self.center_coordinates[0]-(len(label)*8),self.frame.shape[0]-10)
                 self.frame = cv2.putText(self.frame,"Correct",(self.center_coordinates[0]-50,self.center_coordinates[1]),cv2.FONT_HERSHEY_SIMPLEX,1,(0,255,0),1,cv2.LINE_AA)
             else:
                 cc = self.Red
@@ -105,9 +107,26 @@ class StartPage(tk.Frame):
 
     def detect_eyes(self,frame):
         eyes = self.eye_cascade.detectMultiScale(frame)
+        offset = 120
+        eye11 = ((self.center_coordinates[0]-30)-offset,self.center_coordinates[1])
+        eye12 = (eye11[0]+offset,eye11[1]+offset)
+        eye21 = (self.center_coordinates[0]+30,self.center_coordinates[1])
+        eye22 = (eye21[0]+offset,eye21[1]+offset)
+        cv2.rectangle(self.frame,eye11,eye12,(0,255,255),2)
+        cv2.rectangle(self.frame,eye21,eye22,(0,255,255),2)
+        left_eye = False
+        right_eye = False
         for (ex,ey,ew,eh) in eyes:
+            centerX,centerY = ex+(ew//2),ey+(eh//2)
             cv2.rectangle(self.frame,(ex,ey),(ex+ew,ey+eh),(0,255,0),2)
-        
+            cv2.circle(self.frame, (centerX,centerY ), 2,(0,0,255), 1)
+            if eye11[0]<centerX<eye12[0] and eye11[1]<centerY<eye12[1]:
+                left_eye = True
+            elif eye21[0]<centerX<eye22[0] and eye21[1]<centerY<eye22[1]:
+                right_eye = True
+        if left_eye and right_eye:
+            self.forhead_count += 1
+
     def update(self):
         try:
             global loop
@@ -115,14 +134,19 @@ class StartPage(tk.Frame):
                 x,y,w,h = self.center_coordinates[0]-self.radius,self.center_coordinates[1]-self.radius,2*self.radius,2*self.radius
                 self.ret, self.frame = self.vid.get_frame()
                 frame2 = self.frame[y:y+h,x:x+w,:].copy()
-                Numfaces,locs = self.detect_and_predict_mask(frame2)
-                if len(self.mask_lst) != 40:
+                Numfaces,locs = self.detect_face(frame2)
+                if len(self.mask_lst) <= 40:
                     self.add_display_info(Numfaces,locs,frame2,w,h)
                 else:
-                    self.detect_eyes(self.frame)
-                if len(self.mask_lst) >1:
+                    if self.forhead_count <= 50:
+                       self.detect_eyes(self.frame)
+                    else:
+                        self.mask_lst = []
+                        self.forhead_count = 0
+                if len(self.mask_lst) >8:
                     ll = Counter(self.mask_lst).most_common(1)[0][0]
-                    self.frame = cv2.putText(self.frame,str(ll),(x+20,y-50),cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),1,cv2.LINE_AA)
+                    self.frame = cv2.putText(self.frame,str(ll),(20,int(self.vid.height)-20) ,cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),1,cv2.LINE_AA)
+                    self.frame = cv2.putText(self.frame,"Temperature:",(int(self.vid.width)-250,int(self.vid.height)-20) ,cv2.FONT_HERSHEY_SIMPLEX,1,(255,0,0),1,cv2.LINE_AA)
                 if self.ret:
                     self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(self.frame))
                     self.canvas.create_image(0, 0, image = self.photo, anchor = tk.NW)
